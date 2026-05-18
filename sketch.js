@@ -12,6 +12,7 @@ let resultMessage = "";
 let resultState = "";
 let playerWins = 0; // 記錄玩家獲勝次數
 let computerWins = 0; // 記錄電腦獲勝次數
+let confettis = []; // 儲存彩帶粒子的陣列
 const CHOICES = ["石頭", "布", "剪刀"];
 
 function setup() {
@@ -158,6 +159,7 @@ function draw() {
       // 在等待階段比出愛心，可以將分數歸零
       playerWins = 0;
       computerWins = 0;
+      confettis = []; // 清空彩帶
     } else if (["剪刀", "石頭", "布"].includes(detectedGesture)) {
       gamePhase = 'countdown';
       countdownStartTime = millis();
@@ -203,6 +205,10 @@ function draw() {
           resultState = "WIN";
           resultMessage = "你贏了！";
           playerWins++; // 玩家獲勝次數 +1
+          // 玩家獲勝時，產生 150 個彩帶粒子 (從畫面正中央噴發)
+          for (let i = 0; i < 150; i++) {
+            confettis.push(new Confetti(width / 2, height / 2));
+          }
         } else {
           resultState = "LOSE";
           resultMessage = "你輸了";
@@ -250,9 +256,20 @@ function draw() {
       if (detectedGesture === "愛心") {
         playerWins = 0;
         computerWins = 0;
+        confettis = []; // 清空彩帶
       }
       gamePhase = 'waiting';
       playerChoice = '';
+    }
+  }
+  
+  // 繪製與更新彩帶特效 (寫在最底層，確保彩帶畫在最上面)
+  for (let i = confettis.length - 1; i >= 0; i--) {
+    confettis[i].update();
+    confettis[i].display();
+    // 如果彩帶掉出畫面外，就從陣列中移除以節省效能
+    if (confettis[i].y > height) {
+      confettis.splice(i, 1);
     }
   }
 }
@@ -260,4 +277,37 @@ function draw() {
 // 當瀏覽器視窗大小改變時，動態調整畫布大小以維持全螢幕
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+}
+
+// 彩帶粒子類別
+class Confetti {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    // 隨機往上和往兩側噴發的速度
+    this.vx = random(-12, 12);
+    this.vy = random(-15, -5);
+    this.size = random(10, 20);
+    this.color = color(random(255), random(255), random(255));
+    this.angle = random(TWO_PI);
+    this.spin = random(-0.2, 0.2);
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += 0.5; // 重力加速度 (讓彩帶往下掉)
+    this.angle += this.spin; // 讓彩帶旋轉
+  }
+
+  display() {
+    push();
+    translate(this.x, this.y);
+    rotate(this.angle);
+    noStroke();
+    fill(this.color);
+    rectMode(CENTER);
+    rect(0, 0, this.size, this.size * 0.5); // 畫出長方形彩帶
+    pop();
+  }
 }
