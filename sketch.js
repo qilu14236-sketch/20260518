@@ -10,6 +10,8 @@ let playerChoice = "";
 let computerChoice = "";
 let resultMessage = "";
 let resultState = "";
+let playerWins = 0; // 記錄玩家獲勝次數
+let computerWins = 0; // 記錄電腦獲勝次數
 const CHOICES = ["石頭", "布", "剪刀"];
 
 function setup() {
@@ -134,6 +136,15 @@ function draw() {
   }
   pop();
   
+  // 繪製計分板 (畫在 pop 之後確保不會左右顛倒)
+  fill(50);
+  noStroke();
+  textSize(28);
+  textAlign(LEFT, TOP);
+  text(`玩家獲勝: ${playerWins}`, 20, 20);
+  textAlign(RIGHT, TOP);
+  text(`電腦獲勝: ${computerWins}`, width - 20, 20);
+
   // --- 遊戲狀態機 (繪製在 pop() 之後，文字才不會左右顛倒) ---
 
   // 1. 等待階段：偵測到手勢就開始倒數
@@ -180,9 +191,11 @@ function draw() {
         ) {
           resultState = "WIN";
           resultMessage = "你贏了！";
+          playerWins++; // 玩家獲勝次數 +1
         } else {
           resultState = "LOSE";
           resultMessage = "你輸了";
+          computerWins++; // 電腦獲勝次數 +1
         }
       }
     }
@@ -202,7 +215,8 @@ function draw() {
     // 根據勝負決定字體大小和動畫特效
     if (resultState === "WIN") {
       let bounce = sin(frameCount * 0.15) * 20; // 透過 sin() 函式製造彈跳的偏移量
-      textSize(120); // 大大的字
+      // 將字體改小，並使用 min() 確保在手機小螢幕上自動縮小以防超出邊界
+      textSize(min(120, width * 0.2)); 
       fill(255, 50, 50); // 顯眼的紅色
       text(resultMessage, width / 2, 150 + bounce); // 加上彈跳偏移
     } else if (resultState === "LOSE") {
