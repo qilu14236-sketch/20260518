@@ -81,26 +81,30 @@ function draw() {
       
       // 判斷手勢 (為了簡單起見，只看第一隻手)
       if (i === 0) {
-        // 藉由判斷指尖(8,12,16,20)的y座標是否低於下一個關節(6,10,14,18)的y座標，來判定手指是否有伸直 (越上面 y 越小)
-        let indexUp = landmarks[8].y < landmarks[6].y;
-        let middleUp = landmarks[12].y < landmarks[10].y;
-        let ringUp = landmarks[16].y < landmarks[14].y;
-        let pinkyUp = landmarks[20].y < landmarks[18].y;
+        // 為了讓判斷不受手掌翻轉角度影響，改用「指尖到手腕的距離」與「第二關節到手腕的距離」來比較
+        // 如果指尖離手腕比較遠，代表手指是伸直的；反之則是彎曲的。
+        let wrist = landmarks[0];
+        let indexUp = dist(landmarks[8].x, landmarks[8].y, wrist.x, wrist.y) > dist(landmarks[6].x, landmarks[6].y, wrist.x, wrist.y);
+        let middleUp = dist(landmarks[12].x, landmarks[12].y, wrist.x, wrist.y) > dist(landmarks[10].x, landmarks[10].y, wrist.x, wrist.y);
+        let ringUp = dist(landmarks[16].x, landmarks[16].y, wrist.x, wrist.y) > dist(landmarks[14].x, landmarks[14].y, wrist.x, wrist.y);
+        let pinkyUp = dist(landmarks[20].x, landmarks[20].y, wrist.x, wrist.y) > dist(landmarks[18].x, landmarks[18].y, wrist.x, wrist.y);
 
         // 計算大拇指(4)與食指(8)指尖的距離 (MediaPipe 的標準化座標為 0~1)
         let pinchDist = dist(landmarks[4].x, landmarks[4].y, landmarks[8].x, landmarks[8].y);
         
         // OK 手勢: 拇指與食指貼合，且中、無名、小指伸直
-        let isOK = pinchDist < 0.05 && middleUp && ringUp && pinkyUp;
-        // 倒讚手勢: 所有手指彎曲，且大拇指尖端(4)低於拇指關節(3)與食指根部(5) (Y軸往下為正)
-        let isThumbDown = !indexUp && !middleUp && !ringUp && !pinkyUp && (landmarks[4].y > landmarks[3].y) && (landmarks[4].y > landmarks[5].y);
+        let isOK = (pinchDist < 0.08) && middleUp && ringUp && pinkyUp;
+        // 愛心手勢: 拇指與食指貼合，且其他手指彎曲
+        let isHeart = (pinchDist < 0.08) && !middleUp && !ringUp && !pinkyUp;
+        // 倒讚手勢: 所有手指彎曲，且大拇指尖端(4)低於手腕(0)與食指根部(5) (Y軸往下為正)
+        let isThumbDown = !indexUp && !middleUp && !ringUp && !pinkyUp && (landmarks[4].y > landmarks[0].y) && (landmarks[4].y > landmarks[5].y);
         
-        if (isOK) {
+        if (isHeart) {
+          detectedGesture = "愛心";
+        } else if (isOK) {
           detectedGesture = "OK";
         } else if (isThumbDown) {
           detectedGesture = "倒讚";
-        } else if (pinchDist < 0.05 && !middleUp && !ringUp && !pinkyUp) {
-          detectedGesture = "愛心";
         } else if (indexUp && middleUp && !ringUp && !pinkyUp) {
           detectedGesture = "剪刀";
         } else if (!indexUp && !middleUp && !ringUp && !pinkyUp) {
@@ -292,12 +296,21 @@ function draw() {
     text("👌 比出「OK」繼續下一局", width / 2, height / 2 + 20);
     fill(255, 100, 100);
     text("👎 比出「倒讚」結束遊戲", width / 2, height / 2 + 80);
+    fill(255, 150, 255);
+    text("🫶 比出「手指愛心」重置並重新開始", width / 2, height / 2 + 140);
 
     if (detectedGesture === "OK") {
       gamePhase = 'waiting';
       confettis = []; // 繼續下一局時清空彩帶
+      playerChoice = '';
     } else if (detectedGesture === "倒讚") {
       gamePhase = 'end';
+    } else if (detectedGesture === "愛心") {
+      playerWins = 0;
+      computerWins = 0;
+      confettis = [];
+      gamePhase = 'waiting';
+      playerChoice = '';
     }
   }
 
@@ -315,7 +328,15 @@ function draw() {
     textSize(min(24, width * 0.04));
     fill(150);
     text(`最終比分 - 玩家: ${playerWins} / 電腦: ${computerWins}`, width / 2, height / 2 + 50);
-    text("請重新整理網頁來開始新遊戲", width / 2, height / 2 + 100);
+    text("🫶 比出「手指愛心」重新開始新遊戲", width / 2, height / 2 + 100);
+    
+    if (detectedGesture === "愛心") {
+      playerWins = 0;
+      computerWins = 0;
+      confettis = [];
+      gamePhase = 'waiting';
+      playerChoice = '';
+    }
   }
   
   // 繪製與更新彩帶特效 (寫在最底層，確保彩帶畫在最上面)
