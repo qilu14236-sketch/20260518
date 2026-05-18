@@ -86,7 +86,12 @@ function draw() {
         let ringUp = landmarks[16].y < landmarks[14].y;
         let pinkyUp = landmarks[20].y < landmarks[18].y;
 
-        if (indexUp && middleUp && !ringUp && !pinkyUp) {
+        // 計算大拇指(4)與食指(8)指尖的距離 (MediaPipe 的標準化座標為 0~1)
+        let pinchDist = dist(landmarks[4].x, landmarks[4].y, landmarks[8].x, landmarks[8].y);
+        
+        if (pinchDist < 0.05 && !middleUp && !ringUp && !pinkyUp) {
+          detectedGesture = "愛心";
+        } else if (indexUp && middleUp && !ringUp && !pinkyUp) {
           detectedGesture = "剪刀";
         } else if (!indexUp && !middleUp && !ringUp && !pinkyUp) {
           detectedGesture = "石頭";
@@ -148,9 +153,15 @@ function draw() {
   // --- 遊戲狀態機 (繪製在 pop() 之後，文字才不會左右顛倒) ---
 
   // 1. 等待階段：偵測到手勢就開始倒數
-  if (gamePhase === 'waiting' && detectedGesture !== "未辨識") {
-    gamePhase = 'countdown';
-    countdownStartTime = millis();
+  if (gamePhase === 'waiting') {
+    if (detectedGesture === "愛心") {
+      // 在等待階段比出愛心，可以將分數歸零
+      playerWins = 0;
+      computerWins = 0;
+    } else if (["剪刀", "石頭", "布"].includes(detectedGesture)) {
+      gamePhase = 'countdown';
+      countdownStartTime = millis();
+    }
   }
 
   // 2. 倒數階段：顯示倒數，並在結束時結算勝負
@@ -229,8 +240,17 @@ function draw() {
       text(resultMessage, width / 2, 150);
     }
 
-    // 顯示結果 3 秒後回到等待階段
-    if (millis() - lastResultTime > 3000) {
+    // 顯示提示文字
+    textSize(24);
+    fill(100);
+    text("比出「手指愛心」來重置分數並馬上重新開始", width / 2, height - 30);
+
+    // 顯示結果 3 秒後自動回到等待階段，或偵測到「愛心」時立刻重置並重新開始
+    if (millis() - lastResultTime > 3000 || detectedGesture === "愛心") {
+      if (detectedGesture === "愛心") {
+        playerWins = 0;
+        computerWins = 0;
+      }
       gamePhase = 'waiting';
       playerChoice = '';
     }
