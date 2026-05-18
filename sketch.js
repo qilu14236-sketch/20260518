@@ -32,8 +32,8 @@ function setup() {
   hands.setOptions({
     maxNumHands: 2, // 最多偵測幾隻手
     modelComplexity: 1,
-    minDetectionConfidence: 0.7, // 提高偵測的門檻，減少把背景誤認為手的情況
-    minTrackingConfidence: 0.7   // 提高追蹤的門檻，讓移動時的節點更精準
+    minDetectionConfidence: 0.5, // 降低門檻，讓握拳時（手指遮擋）更容易被偵測到
+    minTrackingConfidence: 0.5   // 降低追蹤門檻，避免因為握拳導致追蹤丟失
   });
   
   hands.onResults(onResults);
@@ -90,7 +90,16 @@ function draw() {
         // 計算大拇指(4)與食指(8)指尖的距離 (MediaPipe 的標準化座標為 0~1)
         let pinchDist = dist(landmarks[4].x, landmarks[4].y, landmarks[8].x, landmarks[8].y);
         
-        if (pinchDist < 0.05 && !middleUp && !ringUp && !pinkyUp) {
+        // OK 手勢: 拇指與食指貼合，且中、無名、小指伸直
+        let isOK = pinchDist < 0.05 && middleUp && ringUp && pinkyUp;
+        // 倒讚手勢: 所有手指彎曲，且大拇指尖端(4)低於拇指關節(3)與食指根部(5) (Y軸往下為正)
+        let isThumbDown = !indexUp && !middleUp && !ringUp && !pinkyUp && (landmarks[4].y > landmarks[3].y) && (landmarks[4].y > landmarks[5].y);
+        
+        if (isOK) {
+          detectedGesture = "OK";
+        } else if (isThumbDown) {
+          detectedGesture = "倒讚";
+        } else if (pinchDist < 0.05 && !middleUp && !ringUp && !pinkyUp) {
           detectedGesture = "愛心";
         } else if (indexUp && middleUp && !ringUp && !pinkyUp) {
           detectedGesture = "剪刀";
@@ -253,16 +262,60 @@ function draw() {
     fill(100);
     text("比出「手指愛心」來重置分數並馬上重新開始", width / 2, height - 30);
 
-    // 顯示結果 3 秒後自動回到等待階段，或偵測到「愛心」時立刻重置並重新開始
+    // 顯示結果 3 秒後自動進入選單階段，或偵測到「愛心」時立刻重置並重新開始
     if (millis() - lastResultTime > 3000 || detectedGesture === "愛心") {
       if (detectedGesture === "愛心") {
         playerWins = 0;
         computerWins = 0;
         confettis = []; // 清空彩帶
+        gamePhase = 'waiting';
+      } else {
+        gamePhase = 'menu'; // 3秒後進入選單
       }
-      gamePhase = 'waiting';
       playerChoice = '';
     }
+  }
+
+  // 4. 選單階段：顯示繼續或結束
+  if (gamePhase === 'menu') {
+    fill(0, 0, 0, 180);
+    rectMode(CORNER);
+    rect(0, 0, width, height); // 覆蓋一層半透明黑色當作背景
+    
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textSize(min(60, width * 0.1));
+    text("回合結束", width / 2, height / 2 - 80);
+    
+    textSize(min(32, width * 0.05));
+    fill(100, 255, 100);
+    text("👌 比出「OK」繼續下一局", width / 2, height / 2 + 20);
+    fill(255, 100, 100);
+    text("👎 比出「倒讚」結束遊戲", width / 2, height / 2 + 80);
+
+    if (detectedGesture === "OK") {
+      gamePhase = 'waiting';
+      confettis = []; // 繼續下一局時清空彩帶
+    } else if (detectedGesture === "倒讚") {
+      gamePhase = 'end';
+    }
+  }
+
+  // 5. 結束階段：遊戲徹底結束
+  if (gamePhase === 'end') {
+    fill(0);
+    rectMode(CORNER);
+    rect(0, 0, width, height); // 全黑背景
+    
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textSize(min(60, width * 0.1));
+    text("遊戲結束", width / 2, height / 2 - 50);
+    
+    textSize(min(24, width * 0.04));
+    fill(150);
+    text(`最終比分 - 玩家: ${playerWins} / 電腦: ${computerWins}`, width / 2, height / 2 + 50);
+    text("請重新整理網頁來開始新遊戲", width / 2, height / 2 + 100);
   }
   
   // 繪製與更新彩帶特效 (寫在最底層，確保彩帶畫在最上面)
