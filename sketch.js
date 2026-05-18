@@ -161,6 +161,7 @@ function draw() {
   textSize(28);
   textAlign(LEFT, TOP);
   text(`玩家獲勝: ${playerWins}`, 20, 20);
+  text(`目前手勢: ${detectedGesture}`, 20, 60); // 顯示目前偵測到的手勢
   textAlign(RIGHT, TOP);
   text(`電腦獲勝: ${computerWins}`, width - 20, 20);
 
