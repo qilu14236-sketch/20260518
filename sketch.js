@@ -205,9 +205,10 @@ function draw() {
           resultState = "WIN";
           resultMessage = "你贏了！";
           playerWins++; // 玩家獲勝次數 +1
-          // 玩家獲勝時，產生 150 個彩帶粒子 (從畫面正中央噴發)
+          
+          // 玩家獲勝時，產生 150 個彩帶粒子 (從畫面最上方灑下)
           for (let i = 0; i < 150; i++) {
-            confettis.push(new Confetti(width / 2, height / 2));
+            confettis.push(new Confetti(random(width), random(-200, 0)));
           }
         } else {
           resultState = "LOSE";
@@ -247,7 +248,8 @@ function draw() {
     }
 
     // 顯示提示文字
-    textSize(24);
+    // 使用 min() 確保字體在小螢幕上會自動縮小，0.045 代表每個字大約佔螢幕寬度的 4.5%
+    textSize(min(24, width * 0.045));
     fill(100);
     text("比出「手指愛心」來重置分數並馬上重新開始", width / 2, height - 30);
 
@@ -284,19 +286,25 @@ class Confetti {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    // 隨機往上和往兩側噴發的速度
-    this.vx = random(-12, 12);
-    this.vy = random(-15, -5);
+    // 隨機往兩側飄移與向下的初速
+    this.vx = random(-4, 4);
+    this.vy = random(0, 5);
     this.size = random(10, 20);
     this.color = color(random(255), random(255), random(255));
     this.angle = random(TWO_PI);
     this.spin = random(-0.2, 0.2);
+    
+    // 新增：搖擺的速度（頻率）、搖擺的幅度（大小）與初始的隨機相位
+    this.swaySpeed = random(0.02, 0.08); 
+    this.swayAmp = random(1, 4);
+    this.swayPhase = random(TWO_PI);
   }
 
   update() {
-    this.x += this.vx;
+    // 利用 sin() 函數搭配 frameCount 產生左右搖擺的位移，再加上原本的水平初速
+    this.x += this.vx + sin(frameCount * this.swaySpeed + this.swayPhase) * this.swayAmp;
     this.y += this.vy;
-    this.vy += 0.5; // 重力加速度 (讓彩帶往下掉)
+    this.vy += 0.2; // 重力加速度 (稍微調小，讓灑下來的感覺更輕盈)
     this.angle += this.spin; // 讓彩帶旋轉
   }
 
