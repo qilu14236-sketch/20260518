@@ -2,6 +2,10 @@ let capture;
 let handResults = null;
 
 // 遊戲相關變數
+let gamePhase = 'waiting'; // 'waiting', 'countdown', 'result'
+let countdown = 3;
+let countdownStartTime = 0;
+let lastResultTime = 0; // 用來計時結果顯示畫面
 let playerChoice = "";
 let computerChoice = "";
 let resultMessage = "";
@@ -130,34 +134,62 @@ function draw() {
   }
   pop();
   
-  // 遊戲邏輯與文字顯示 (必須寫在 pop() 之後，文字才不會跟著畫面左右顛倒)
-  if (detectedGesture !== "未辨識") {
-    // 如果偵測到新動作，立刻更新結果
-    if (playerChoice !== detectedGesture) {
+  // --- 遊戲狀態機 (繪製在 pop() 之後，文字才不會左右顛倒) ---
+
+  // 1. 等待階段：偵測到手勢就開始倒數
+  if (gamePhase === 'waiting' && detectedGesture !== "未辨識") {
+    gamePhase = 'countdown';
+    countdownStartTime = millis();
+  }
+
+  // 2. 倒數階段：顯示倒數，並在結束時結算勝負
+  if (gamePhase === 'countdown') {
+    let elapsed = millis() - countdownStartTime;
+    countdown = 3 - floor(elapsed / 1000);
+
+    // 顯示倒數數字
+    if (countdown > 0) {
+      fill(0, 0, 0, 150);
+      noStroke();
+      textAlign(CENTER, CENTER);
+      textSize(250);
+      text(countdown, width / 2, 180);
+    } else { // 倒數結束
+      gamePhase = 'result';
+      lastResultTime = millis();
+
+      // 捕捉倒數結束瞬間的手勢
       playerChoice = detectedGesture;
-      // 電腦隨機出拳
-      computerChoice = CHOICES[Math.floor(Math.random() * CHOICES.length)];
-      
-      // 判斷勝負
-      if (playerChoice === computerChoice) {
-        resultState = "DRAW";
-        resultMessage = "平手";
-      } else if (
-        (playerChoice === "石頭" && computerChoice === "剪刀") ||
-        (playerChoice === "布" && computerChoice === "石頭") ||
-        (playerChoice === "剪刀" && computerChoice === "布")
-      ) {
-        resultState = "WIN";
-        resultMessage = "你贏了！";
-      } else {
+
+      // 如果沒偵測到手勢，算輸
+      if (playerChoice === '未辨識') {
         resultState = "LOSE";
-        resultMessage = "你輸了";
+        resultMessage = "沒看到你的手！";
+        computerChoice = "---";
+      } else {
+        // 電腦出拳
+        computerChoice = CHOICES[Math.floor(Math.random() * CHOICES.length)];
+        // 判斷勝負
+        if (playerChoice === computerChoice) {
+          resultState = "DRAW";
+          resultMessage = "平手";
+        } else if (
+          (playerChoice === "石頭" && computerChoice === "剪刀") ||
+          (playerChoice === "布" && computerChoice === "石頭") ||
+          (playerChoice === "剪刀" && computerChoice === "布")
+        ) {
+          resultState = "WIN";
+          resultMessage = "你贏了！";
+        } else {
+          resultState = "LOSE";
+          resultMessage = "你輸了";
+        }
       }
     }
   }
 
-  // 繪製遊戲結果介面
-  if (playerChoice !== "") {
+  // 3. 結果階段：顯示結果幾秒後，重置遊戲
+  if (gamePhase === 'result') {
     fill(0);
     noStroke();
     textAlign(CENTER, CENTER);
@@ -181,6 +213,12 @@ function draw() {
       textSize(48); // 平手用中等大小
       fill(100);
       text(resultMessage, width / 2, 150);
+    }
+
+    // 顯示結果 3 秒後回到等待階段
+    if (millis() - lastResultTime > 3000) {
+      gamePhase = 'waiting';
+      playerChoice = '';
     }
   }
 }
